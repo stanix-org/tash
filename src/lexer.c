@@ -274,6 +274,20 @@ static void get_word_helper(source_t *src, vector_t *buf, int *flags, int c, int
 	}
 }
 
+static int can_recognize_word(source_t *src, token_t *token) {
+	switch (src->lexer.state) {
+	case LEXER_STATE_NORMAL:
+		return 0;
+	case LEXER_STATE_KEYWORD:
+		return 1;
+	case LEXER_STATE_ESAC:
+		return token->type == T_ESAC;
+	case LEXER_STATE_HEREDOC:
+	default:
+		return 0;
+	}
+}
+
 void unget_token(source_t *src, token_t *token) {
 	src->lexer.putback = token;
 }
@@ -303,17 +317,19 @@ token_t *next_token(source_t *src) {
 	switch (c) {
 	case EOF:
 		token->type = T_EOF;
-		return token;
+		break;
 	case '(':
 		token->type = T_OPEN_PAREN;
-		return token;
+		break;
 	case ')':
 		token->type = T_CLOSE_PAREN;
-		return token;
+		break;
 	case '\n':
 		token->type = T_NEWLINE;
-		return token;
+		break;
 	}
+
+	if (token->type) return token;
 
 	// operator thay might need peek
 	int c2 = peek_char(src);
@@ -330,7 +346,7 @@ token_t *next_token(source_t *src) {
 		} else {
 			token->type = T_SEMI_COLON;
 		}
-		return token;
+		break;
 	case '&':
 		if (c2 == '&') {
 			token->type = T_AND;
@@ -338,7 +354,7 @@ token_t *next_token(source_t *src) {
 		} else {
 			token->type = T_BG;
 		}
-		return token;
+		break;
 	case '|':
 		if (c2 == '|') {
 			token->type = T_OR;
@@ -346,7 +362,7 @@ token_t *next_token(source_t *src) {
 		} else {
 			token->type = T_PIPE;
 		}
-		return token;
+		break;
 	case '<':
 		if (c2 == '&') {
 			token->type = T_DUP_IN;
@@ -354,7 +370,7 @@ token_t *next_token(source_t *src) {
 		} else {
 			token->type = T_INFERIOR;
 		}
-		return token;
+		break;
 	case '>':
 		if (c2 == '>') {
 			token->type = T_APPEND;
@@ -365,13 +381,14 @@ token_t *next_token(source_t *src) {
 		} else {
 			token->type = T_SUPERIOR;
 		}
-		return token;
+		break;
 	case '\r':
 		if (c2 == '\n') get_char(src);
 		token->type = T_NEWLINE;
-		return token;
+		break;
 		// TODO : do more
 	}
+	if (token->type) return token;
 
 	// we have a word
 	vector_t buf = {0};
@@ -385,8 +402,9 @@ token_t *next_token(source_t *src) {
 		return NULL;
 	}
 
-	// is it a reserved word ?
 	char *str = buf.data;
+
+	// is it a reserved word ?
 	if (!strcmp(str, "if")) {
 		token->type = T_IF;
 	} else if (!strcmp(str, "then")) {
@@ -425,17 +443,21 @@ token_t *next_token(source_t *src) {
 		token->type = T_WORD;
 	}
 
-	return token;
-}
+	if (!can_recognize_word(src, token)) {
+		token->type = T_WORD;
+	}
 
-int token_is_word(token_t *token) {
-	return token->type >= T_KEYWORD || token->type == T_WORD;
+	return token;
 }
 
 void destroy_token(token_t *token) {
 	if (!token) return;
 	xfree(token->value);
 	xfree(token);
+}
+
+void set_lexer_state(source_t *src, int state) {
+	src->lexer.state = state;
 }
 
 void discard_line(source_t *src) {

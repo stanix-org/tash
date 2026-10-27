@@ -21,3 +21,15 @@ case $TEST in
 		;;
 esac
 echo $?
+
+# weird case
+case $TEST in esac
+
+# esac is authorized as pattern
+case $TEST in
+	in|esac)
+		echo hi
+		;;
+	(esac)
+		;;
+esac

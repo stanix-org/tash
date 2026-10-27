@@ -173,13 +173,15 @@ static node_t *parse_for(source_t *src) {
 	// we already parsed the for keyword
 	node_t *body = NULL;
 	vector_t words = {0};
+	set_lexer_state(src, LEXER_STATE_NORMAL);
 	token_t *name = next_token(src);
 	if (!name) goto error;
-	if (!token_is_word(name)) {
+	if (name->type != T_WORD) {
 		// syntax error
 		syntax_error(_("unexpected token '%s' (expected 'word')"), token_name(name));
 		goto error;
 	}
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	token_t *in = next_token(src);
 	if (!in) goto error;
 
@@ -189,9 +191,10 @@ static node_t *parse_for(source_t *src) {
 		// we have a in
 		destroy_token(in);
 		word_t word;
+		set_lexer_state(src, LEXER_STATE_NORMAL);
 		token = next_token(src);
 		if (!token) goto error;
-		while (token_is_word(token)) {
+		while (token->type == T_WORD) {
 			word_from_token(token, &word);
 			vector_push_back(&words, &word);
 			destroy_token(token);
@@ -222,6 +225,7 @@ static node_t *parse_for(source_t *src) {
 	}
 
 	// we need a do
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	if (expect_token(src, T_DO) < 0) goto error;
 
 	body = parse_list(src, 1, TERMINATORS(T_DONE));
@@ -253,33 +257,38 @@ static node_t *parse_case(source_t *src) {
 	init_vector(&patterns, sizeof(word_t));
 	init_vector(&cases, sizeof(case_t));
 
+	set_lexer_state(src, LEXER_STATE_NORMAL);
 	token_t *word = next_token(src);
 	if (!word) goto error;
-	if (!token_is_word(word)) {
+	if (word->type != T_WORD) {
 		// syntax error
 		syntax_error(_("unexpected token '%s' (expected 'word')"), token_name(word));
 		goto error;
 	}
 
 	// we need a in
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	if (expect_token(src, T_IN) < 0) goto error;
 
 	for (;;) {
+		set_lexer_state(src, LEXER_STATE_ESAC);
 		token_t *token = skip_newlines(src);
 		if (!token) goto error;
+	
+		set_lexer_state(src, LEXER_STATE_NORMAL);
 
 		// optional ( at the start
 		if (token->type == T_OPEN_PAREN) {
 			destroy_token(token);
 			token = next_token(src);
 			if (!token) goto error;
-		} else if (!token_is_word(token) || token->type == T_ESAC) {
+		} else if (token->type == T_ESAC) {
 			unget_token(src, token);
 			break;
 		}
 
 		for (;;) {
-			if (!token_is_word(token)) {
+			if (token->type != T_WORD) {
 				// syntax error
 				syntax_error(_("unexpected token '%s' (expected 'word')"), token_name(token));
 				destroy_token(token);
@@ -305,6 +314,7 @@ static node_t *parse_case(source_t *src) {
 		if (expect_token(src, T_CLOSE_PAREN) < 0) goto error;
 
 		// check if we have a body
+		set_lexer_state(src, LEXER_STATE_KEYWORD);
 		token = skip_newlines(src);
 		if (!token) goto error;
 		unget_token(src, token);
@@ -359,6 +369,7 @@ static node_t *parse_if(source_t *src) {
 	if (!condition) return NULL;
 
 	// we need a then
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	if (expect_token(src, T_THEN) < 0) goto error;
 
 	body = parse_list(src, 1, TERMINATORS(T_ELIF, T_ELSE, T_FI));
@@ -473,7 +484,7 @@ static int parse_redir(source_t *src, token_t *first, redir_t *redir) {
 		parser_error = 1;
 		return -1;
 	}
-	if (!token_is_word(last)) {
+	if (last->type != T_WORD) {
 		syntax_error(_("unexpected token '%s' (expected 'word')"), token_name(last));
 		destroy_token(last);
 		parser_error = 1;
@@ -511,7 +522,7 @@ static int is_valid_name_char(char c) {
 }
 
 static int is_valid_name(token_t *token) {
-	if (!token_is_word(token)) return 0;
+	if (token->type != T_WORD) return 0;
 	char *ptr = token->value;
 	while (*ptr) {
 		if (!is_valid_name_char(*ptr)) return 0;
@@ -520,9 +531,8 @@ static int is_valid_name(token_t *token) {
 	return 1;
 }
 
-
 static int parse_assignement(token_t *token, assign_t *assign) {
-	if (!token_is_word(token)) return -1;
+	if (token->type != T_WORD) return -1;
 	if (!isalpha(token->value[0]) && token->value[0] != '_') return -1;
 	char *equal = strchr(token->value, '=');
 	if (!equal) return -1;
@@ -539,6 +549,8 @@ static int parse_assignement(token_t *token, assign_t *assign) {
 }
 
 static node_t *parse_simple_command(source_t *src, token_t *token) {
+	set_lexer_state(src, LEXER_STATE_NORMAL);
+
 	// we have the first token
 	word_t word;
 	redir_t redir;
@@ -558,7 +570,7 @@ static node_t *parse_simple_command(source_t *src, token_t *token) {
 	}
 
 	for (;;) {
-		if (token_is_word(token)) {
+		if (token->type == T_WORD) {
 			word_from_token(token, &word);
 			vector_push_back(&args, &word);
 		} else if (token->type == T_DUP_IN
@@ -631,6 +643,7 @@ static node_t *parse_compound_command(source_t *src) {
 	vector_t redirs = {0};
 	init_vector(&redirs, sizeof(redir_t));
 
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	token_t *token = skip_newlines(src);
 	if (!token) goto error;
 
@@ -698,6 +711,7 @@ error:
 
 // parse a command (can be a simple command, compound command or func declaration)
 static node_t *parse_command(source_t *src) {
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	token_t *token = skip_newlines(src);
 	if (!token) {
 error:
@@ -719,6 +733,7 @@ error:
 		return parse_compound_command(src);
 	case T_WORD:;
 		// do we have a func declaration ?
+		set_lexer_state(src, LEXER_STATE_NORMAL);
 		token_t *next = next_token(src);
 		if (!next) {
 			destroy_token(token);
@@ -775,6 +790,7 @@ error:
 }
 
 static node_t *parse_pipeline(source_t *src) {
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	token_t *token = next_token(src);
 	if (!token) {
 		parser_error = 1;
@@ -839,6 +855,7 @@ static node_t *parse_list(source_t *src, int multi_lines, int *terminators) {
 	if (!node) return NULL;
 
 	for (;;) {
+		set_lexer_state(src, LEXER_STATE_NORMAL);
 		token_t *token = next_token(src);
 		if (!token) goto error;
 		if (token->type != T_NEWLINE && token->type != T_SEMI_COLON && token->type != T_BG) {
@@ -864,6 +881,7 @@ static node_t *parse_list(source_t *src, int multi_lines, int *terminators) {
 
 		// check if we have a terminator
 		if (terminators) {
+			set_lexer_state(src, LEXER_STATE_KEYWORD);
 			token = skip_newlines(src);
 			if (!token) goto error;
 			unget_token(src, token);
@@ -893,6 +911,7 @@ error:
 
 static node_t *parse_line(source_t *src) {
 	// EOF check
+	set_lexer_state(src, LEXER_STATE_KEYWORD);
 	token_t *token = skip_newlines(src);
 	if (!token) {
 		parser_error = 1;

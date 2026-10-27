@@ -157,7 +157,13 @@ typedef struct node {
 typedef struct lexer {
 	token_t *putback;
 	int error;
+	int state;
 } lexer_t;
+
+#define LEXER_STATE_NORMAL  0 // recognize no keyword
+#define LEXER_STATE_KEYWORD 1 // recognize every keywords
+#define LEXER_STATE_ESAC    2 // recognize only esac
+#define LEXER_STATE_HEREDOC 3
 
 typedef struct source {
 	void *data;
@@ -220,7 +226,7 @@ void unget_token(source_t *src, token_t *token);
 void destroy_token(token_t *token);
 const char *token_name(token_t *token);
 size_t token_len(token_t *token);
-int token_is_word(token_t *token);
+void set_lexer_state(source_t *src, int state);
 void discard_line(source_t *src);
 
 int try_builtin(int argc, char **argv);
