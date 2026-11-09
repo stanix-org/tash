@@ -13,6 +13,9 @@
 
 // process manipulation
 
+#ifndef WCOREDUMP
+#define WCOREDUMP(x) 0
+#endif
 
 void job_report_termination(int status, int bg) {
 	if (WIFEXITED(status)) {
@@ -21,7 +24,9 @@ void job_report_termination(int status, int bg) {
 	} else if (WIFSIGNALED(status)) {
 		exit_status = WTERMSIG(status) + 128;
 		// only interactive shell print messages
-		if ((flags & TASH_INTERACTIVE) && !bg && (flags & TASH_JOB_CONTROL)) fprintf(stderr, _("terminated on %s\n"), strsignal(WTERMSIG(status)));
+		if ((flags & TASH_INTERACTIVE) && !bg && (flags & TASH_JOB_CONTROL)) {
+			fprintf(stderr, WCOREDUMP(status) ? _("terminated on %s (core dumped)\n") : _("terminated on %s\n"), strsignal(WTERMSIG(status)));
+		}
 		if (!bg && WTERMSIG(status) == SIGINT && (flags & TASH_JOB_CONTROL)) {
 			sigint_break = 1;
 		}

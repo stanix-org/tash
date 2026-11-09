@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: tash v0.1.0-29-g4f2340e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-27 21:48+0200\n"
-"PO-Revision-Date: 2026-09-27 21:48+0200\n"
+"POT-Creation-Date: 2026-11-09 19:12+0100\n"
+"PO-Revision-Date: 2026-11-09 19:12+0100\n"
 "Last-Translator: Tayoky tayoky4848@gmail.com\n"
 "Language-Team: Tayoky tayoky4848@gmail.com\n"
 "Language: fr\n"
@@ -135,7 +135,12 @@ msgstr "'%.*s' : variable non définie"
 msgid "bad backtick expansion"
 msgstr "mauvaise expression backtick"
 
-#: src/jobs.c:24
+#: src/jobs.c:28
+#, fuzzy, c-format
+msgid "terminated on %s (core dumped)\n"
+msgstr "terminé sur %s (vidage de mémoire effectué)\n"
+
+#: src/jobs.c:28
 #, c-format
 msgid "terminated on %s\n"
 msgstr "terminé sur %s\n"
@@ -173,21 +178,21 @@ msgstr "erreur de syntaxe : %s"
 msgid "unexpected token '%s' (expected '%s')"
 msgstr "jeton inattendu '%s' ('%s' était attendu)"
 
-#: src/parser.c:180 src/parser.c:260 src/parser.c:284 src/parser.c:477
+#: src/parser.c:181 src/parser.c:265 src/parser.c:293 src/parser.c:488
 #, c-format
 msgid "unexpected token '%s' (expected 'word')"
 msgstr "jeton inattendu '%s' (un 'word' etait attendu)"
 
-#: src/parser.c:202
+#: src/parser.c:205
 #, c-format
 msgid "unexpected token '%s' (expected ';' or '<newline>')"
 msgstr "jetton inattendu '%s' (un ';' ou '<newline>' etait attendu)"
 
-#: src/parser.c:611
+#: src/parser.c:623
 msgid "invalid identifier"
 msgstr "identifieur invalide"
 
-#: src/parser.c:669 src/parser.c:741
+#: src/parser.c:682 src/parser.c:756
 #, c-format
 msgid "unexpected token '%s'"
 msgstr "jeton inattendu '%s'"
